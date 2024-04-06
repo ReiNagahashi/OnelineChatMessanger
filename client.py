@@ -23,8 +23,12 @@ def close_socket_with_error():
 
 
 
-server_ip = input("Type in the server's ip address to connect to: ")
-server_port = int(input("Type in the server's port number to connect to: "))
+# 実際には入力させるけど、テスト中はハードコーディングしておく
+# server_ip = input("Type in the server's ip address to connect to: ")
+server_ip = ''
+# server_port = int(input("Type in the server's port number to connect to: "))
+server_port = 9001
+
 
 server_address = (server_ip, server_port)
 
