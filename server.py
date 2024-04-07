@@ -27,6 +27,7 @@ class Server:
 
     def bind(self, address):
         self.sock.bind(address)
+        self.sock.setblocking(0) #ソケットをノンブロッキングモードに設定
     
 
     def send_response(self, address):
