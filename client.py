@@ -2,6 +2,7 @@ import socket
 import select
 import sys
 import json
+import tcp
 
 class Client:
     logged_in = True
@@ -53,8 +54,7 @@ class Client:
             except Exception as e:
                 self.close_socket_with_error(e)
 
-    
-    def send_message(self):
+    def listen(self):
         # ソケットをノンブロッキングモードに設定
         self.sock.setblocking(0) #ソケットをノンブロッキングモードに設定
 
@@ -79,10 +79,52 @@ class Client:
 
                     # 入力データが存在する場合
                     elif s is sys.stdin:
-                        msg = sys.stdin.readline().strip()
-                        data = self.create_bytes_data('message', {'message': msg})
+                        self.send_message()
+    
+    def send_message(self):
+        msg = sys.stdin.readline().strip()
+        command_list = msg.split(" ")
+        # チャットルームの作成処理
+        if 3 <= len(command_list) <= 4 and command_list[0] == 'CREATE' and command_list[1] == 'CHATROOM':
+            password = ""
+            if len(command_list) == 4:
+                password = command_list[-1]                        
 
-                        self.sock.sendto(data, self.server_address)
+            self.create_chatroom(command_list[2], password)
+            # サーバにもルーム名とパスワードを送信→ここで送る必要があるのか？TCPで安全に確実に送れるようにするべきことだと思うよ
+            data = self.create_bytes_data('create_chatroom', {})
+        else:
+        # メッセージの送信
+            data = self.create_bytes_data('message', {'message': msg})
+
+        self.sock.sendto(data, self.server_address)
+
+
+    def create_chatroom(self, room_name, password):        
+        # TCPソケットの作成
+        tcp_sock = tcp.TCP(socket.AF_INET, socket.SOCK_STREAM)
+        # TCP通信ようのサーバのアドレス、ポートの設定→取り敢えずポート番号をハードコーディング
+        tcp_sock.set_remote_address((self.server_address[0], 9002))
+        # サーバと接続
+        tcp_sock.connect()
+
+        # まずリクエストを送信
+        try:
+            # ヘッダーを作成
+            header = tcp_sock.protocol_header(len(room_name.encode('utf-8')), 1, 0, len(password.encode('utf-8')))
+            # ヘッダーの送信
+            tcp_sock.send(header)
+            # ボディの送信
+            tcp_sock.send((room_name + " " + password).encode('utf-8'))
+
+        except socket.error as err:
+            tcp_sock.close_socket_with_error(err)
+        
+        finally:
+            print("Succeeded!!")
+            tcp_sock.close_socket_with_error("")
+
+
 
     def socket_close(self):
         self.sock.close()

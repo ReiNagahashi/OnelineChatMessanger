@@ -29,7 +29,7 @@ print("Type messages: ", end='')
 sys.stdout.flush()  # stdoutをフラッシュして、プロンプトがすぐに表示されるようにする
 
 # メッセージの入力
-client.send_message()
+client.listen()
 
 # ソケットを閉じる
 client.socket_close()

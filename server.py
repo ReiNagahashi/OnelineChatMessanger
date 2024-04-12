@@ -11,56 +11,73 @@ class Server:
         'message': '',
         'is_expired': False
     }
-
     # この値を過ぎてしまうと、ユーザはonline_usersから削除されてクライアント側でソケットが自動で閉じられる
     valid_duration = 10 #sec
-
-    # key: (ip_address, port_number), value: (ユーザー名, 最後のメッセージの時間)
-    online_users = {}
     # (ip_address, port_number): [時刻の文字列要素1, 時刻の文字列要素2, ...]
     messages = defaultdict(list)
+    # key: (ip_address, port_number), value: (ユーザー名, 最後のメッセージの時間)
+    online_users = {}
+
+    def __init__(self, address, udp_port, tcp_port):
+        self.server_address = address
+        self.udp_port = udp_port
+        self.tcp_port = tcp_port
+
+        # UDPソケットの初期化
+        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp_socket.bind((self.server_address, self.udp_port))
+        self.udp_socket.setblocking(0) #ソケットをノンブロッキングモードに設定
 
 
-    def __init__(self, address_family, socket_type):
-        self.sock = socket.socket(address_family, socket_type)
-    
-
-    def bind(self, address):
-        self.sock.bind(address)
-        self.sock.setblocking(0) #ソケットをノンブロッキングモードに設定
-    
-
-    def send_response(self, address):
-        _ = self.sock.sendto(json.dumps(self.response).encode('utf-8'), address)
+        # TCPソケットの初期化
+        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.tcp_socket.bind((self.server_address, self.tcp_port))
+        self.tcp_socket.listen()
+        self.tcp_socket.setblocking(0) #ソケットをノンブロッキングモードに設定
 
 
     def listen(self):
         while True:
-            print('\nwaiting to receive message')
+            readable, _, _ = select.select([self.udp_socket, self.tcp_socket], [], [], 180.0)
+            # UDP, TCPの両方をノンブロッキングで並行して通信する
+            if not readable:
+                self.check_expired_users()
+            for sock in readable:
+                if sock == self.udp_socket:
+                    data, address = self.udp_socket.recvfrom(4096)
+                    self.udp_handle(data, address)
+                elif sock == self.tcp_socket:
+                    client_socket, addr = self.tcp_socket.accept()
+                    print("TCP request received!!")
+                    self.tcp_handle(client_socket, addr)
 
-            readable, writable, exceptional = select.select([self.sock], [], [], 5.0)
-            if not (readable or writable or exceptional):
-                pass
-            else:
-                data, address = self.sock.recvfrom(4096)
 
-                current_time = time.time()
-                
-                json_data = json.loads(data)
+    def udp_handle(self, data, client_address):
+        current_time = time.time()
+        json_data = json.loads(data)
 
-                if json_data['command'] == 'user_name': 
-                    if self.data_size_validation(json_data['parameters'], [255]):
-                        self.response['message'] = "Welcome to our message service"
-                        # 登録ユーザーを格納する辞書に保存, メッセージは空白で初期化
-                        self.online_users[address] = [json_data['parameters']['user_name'], 0.0]
-                elif json_data['command'] == 'message':
-                    if self.data_size_validation(json_data['parameters'], [4096]):
-                        self.response['message'] = f"{self.online_users[address][0]}: {json_data['parameters']['message']}"
-                self.online_users[address][1] = current_time
+        # ユーザー名の登録
+        if json_data['command'] == 'user_name': 
+            if self.data_size_validation(json_data['parameters'], [255]):
+                self.response['message'] = "Welcome to our message service"
+                # 登録ユーザーを格納する辞書に保存, メッセージは空白で初期化
+                self.online_users[client_address] = [json_data['parameters']['user_name'], 0.0]
+        # メッセージ送信
+        elif json_data['command'] == 'message':
+            if self.data_size_validation(json_data['parameters'], [4096]):
+                self.response['message'] = f"{self.online_users[client_address][0]}: {json_data['parameters']['message']}"
+        # チャットルーム作成コマンド
+        elif json_data['command'] == 'create_chatroom':
 
-                self.send_response(address)
+            print("Request for creating chatroom received!!!")
+            self.response['message'] = "Start creating chatroom..."
+        self.online_users[client_address][1] = current_time
 
-            self.check_expired_users()
+        self.send_response(client_address)
+
+
+    def send_response(self, address):
+        _ = self.udp_socket.sendto(json.dumps(self.response).encode('utf-8'), address)
 
 
     # 第一引数："parameters"のディクショナリ, 第二引数：parametersの各要素の制限メモリを持ったリスト
@@ -90,8 +107,11 @@ class Server:
                 # keyはアドレス
                 self.send_response(key)
                 del self.online_users[key]
+                self.response['is_expired'] = False
 
         print("check_expired_users func is completed!")
         print(self.online_users)
 
 
+    def tcp_handle(self, client_socket, client_address):
+        print(f"Client socket: {client_socket}, Client Address: {client_address}")
