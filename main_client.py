@@ -28,7 +28,7 @@ client.send_username()
 print("Type messages: ", end='')
 sys.stdout.flush()  # stdoutをフラッシュして、プロンプトがすぐに表示されるようにする
 
-# メッセージの入力
+# UDP通信の開始
 client.listen()
 
 # ソケットを閉じる
