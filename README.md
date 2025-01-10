@@ -1,11 +1,11 @@
-# Overview
-This project implements real-time chat using both UDP and TCP communication.
+# 概要
+このプロジェクトでは、UDP と TCP 通信の両方を使用してリアルタイム チャットを実装しています。
 
-1. Message transmission utilizes UDP, allowing for quick and simple implementation.
-   - Since UDP is connectionless, the system tracks the time of the last message sent by each client and automatically exits them from the chat room if they exceed a certain time limit.
-2. Chat rooms for specific users are implemented using TCP communication.
-3. Users have the option to set a password when creating a chat room. This requires other users to input the password when joining the chat room.
+1. メッセージ送信には UDP が使用されるため、迅速かつ簡単に実装できます。
+   - UDPはコネクションレスであるため、システムは各クライアントが最後に送信したメッセージの時間を追跡し、一定の時間制限を超えると自動的にチャットルームから退出します。
+2. 特定のユーザー用のチャットルームはTCP通信を使用して実装しています。
+3. ユーザーはチャットルームを作成するときにパスワードを設定できます。これにより、他のユーザーはチャットルームに参加する際にパスワードを入力する必要があります。
 
-## Key Points in this Project
-1. Sockets are manipulated in non-blocking mode to concurrently receive requests from clients using both TCP and UDP socket types (specifically using the Python select library).
-2. Clients can select multiple functionalities, such as messaging, creating chat rooms, and joining chat rooms, through commands on the CLI.
+## ポイント
+1. ソケットは非ブロッキングモードで操作され、TCPとUDPの両方のソケットタイプ (具体的にはPythonのselectライブラリを使用) を使用してクライアントからの要求を同時に受信します。 
+2. クライアントはCLIのコマンドを使用して、メッセージング・チャットルームの作成・チャットルームへの参加など、複数の機能を選択できます。
